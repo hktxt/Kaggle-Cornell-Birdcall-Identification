@@ -1,0 +1,11 @@
+/data/birdsong-recognition/
+/data/birdcall-check/
+/weights/
+/.idea/
+/tmp/
+/logs/
+*.zip
+*/__pycache__/
+/.idea/
+/lightning_logs/
+/.git/

@@ -1,0 +1,10 @@
+albumentations==0.4.5
+librosa==0.8.0
+pandas==1.0.3
+python-speech-features==0.6
+pytorch-lightning==0.8.5
+SoundFile==0.10.3.post1
+torchsampler==0.1
+webcolors==1.9.1
+webrtcvad==2.0.10
+prefetch_generator
