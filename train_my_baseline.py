@@ -1,6 +1,6 @@
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.sklearns import F1
-from models.resnet import ResNet
+from models.kesci_resnet import ResNet
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import LearningRateLogger
 from models.loss import AngleLoss, AngleLossWithCE

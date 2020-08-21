@@ -4,7 +4,7 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import LearningRateLogger
 from models.loss import AngleLoss, AngleLossWithCE
 import pytorch_lightning as pl
-from models.resnest import get_resnest
+from models.base import get_model
 from dataset.augment import spec_augment, mixup
 import torch
 import torch.nn as nn
@@ -12,7 +12,6 @@ from prefetch_generator import BackgroundGenerator
 from torchsampler import ImbalancedDatasetSampler
 from dataset.dataset import callback_get_label1
 from dataset.dataset import Birdcall, SpectrogramDataset
-from dataset.transform import get_train_transforms, get_val_transforms
 import pandas as pd
 import warnings
 # warnings.filterwarnings("ignore", category=UserWarning)
@@ -105,6 +104,10 @@ if __name__ == "__main__":
     parser = pl.Trainer.add_argparse_args(parser)
     parser.add_argument('--fold', default=0)
     parser.add_argument('--epochs', default=20)
+    parser.add_argument('--arch', default='resnet50', type=str, help="model arch, ['resnet', 'resnest50', "
+                                                                     "'efficientnet b0~b3', 'pyconvhgresnet', "
+                                                                     "'resnet_sk2', 'se_resnet50_32x4d']")
+    parser.add_argument('--classes', default=264)
     parser.add_argument('--batch_size', default=4)
     parser.add_argument('--balanceSample', default=False)
     parser.add_argument('--specaug', default=False)  # seems like it's not working with AngleLoss.
@@ -115,7 +118,7 @@ if __name__ == "__main__":
 
     df = pd.read_csv('data/df_mod.csv')[:1000]  # use first 30 lines for debug.
     print('training public kernel baseline.')
-    model = get_resnest(classes=264)
+    model = get_model(args.arch, classes=args.classes)
     criterion = nn.BCEWithLogitsLoss()
     Bird = CornellBirdCall(df, model, criterion, metrics=F1(), hparams=args)
     lr_logger = LearningRateLogger()
@@ -123,7 +126,7 @@ if __name__ == "__main__":
                         gpus=[0],
                         max_epochs=30,
                         benchmark=True,
-                        accumulate_grad_batches=1,
+                        # accumulate_grad_batches=1,
                         # log_gpu_memory='all',
                         weights_save_path='./weights',
                         # callbacks=[lr_logger]
