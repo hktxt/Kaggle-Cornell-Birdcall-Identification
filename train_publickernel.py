@@ -104,7 +104,7 @@ if __name__ == "__main__":
     parser = pl.Trainer.add_argparse_args(parser)
     parser.add_argument('--fold', default=0)
     parser.add_argument('--epochs', default=20)
-    parser.add_argument('--arch', default='resnet50', type=str, help="model arch, ['resnet', 'resnest50', "
+    parser.add_argument('--arch', default='resnest50', type=str, help="model arch, ['resnet50', 'resnest50', "
                                                                      "'efficientnet b0~b3', 'pyconvhgresnet', "
                                                                      "'resnet_sk2', 'se_resnet50_32x4d']")
     parser.add_argument('--classes', default=264)
