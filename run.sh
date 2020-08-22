@@ -1,3 +1,4 @@
+# not working for now... do not use it.
 python train.py --fold 0 --arch 'resnest50' --epochs 2
 python train.py --fold 1 --arch 'efficientnet-b0' --epochs 2
 python train.py --fold 2 --arch 'pyconvhgresnet' --epochs 2

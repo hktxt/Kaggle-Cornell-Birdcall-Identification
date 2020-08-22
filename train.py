@@ -7,6 +7,8 @@ import pytorch_lightning as pl
 from models.base import get_model
 from dataset.augment import spec_augment, mixup
 import torch
+import random
+import numpy as np
 import torch.nn as nn
 from prefetch_generator import BackgroundGenerator
 from torchsampler import ImbalancedDatasetSampler
@@ -39,9 +41,21 @@ class CornellBirdCall(LightningModule):
 
     def training_step(self, batch, batch_idx):
         imgs, labels = batch
-        if self.hparams.specaug:
-            imgs, labels = mixup(imgs, labels)
-            imgs, labels = spec_augment(imgs, labels)
+        if self.hparams.specaug and np.random.randint():
+            phase = random.choice([0, 1, 2, 3])
+            if phase == 0:
+                # no aug
+                pass
+            elif phase == 1:
+                # mixup
+                imgs, labels = mixup(imgs, labels)
+            elif phase == 2:
+                # spec_aug
+                imgs, labels = spec_augment(imgs, labels)
+            else:
+                # both
+                imgs, labels = mixup(imgs, labels)
+                imgs, labels = spec_augment(imgs, labels)
 
         x = self(imgs)
         loss = self.criterion(x, labels)
@@ -106,20 +120,20 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser = pl.Trainer.add_argparse_args(parser)
     parser.add_argument('--fold', default=0)
-    parser.add_argument('--epochs', default=2)
-    parser.add_argument('--arch', default='pyconvhgresnet', type=str, help="model arch, ['resnet50', 'resnest50', "
+    parser.add_argument('--epochs', default=100)
+    parser.add_argument('--arch', default='resnest50', type=str, help="model arch, ['resnet50', 'resnest50', "
                                                                       "'efficientnet-b0~3', 'pyconvhgresnet', "
                                                                       "'resnet_sk2', 'se_resnet50_32x4d']")
     parser.add_argument('--classes', default=264)
-    parser.add_argument('--batch_size', default=4)
-    parser.add_argument('--balanceSample', default=False)
+    parser.add_argument('--batch_size', default=64)
+    parser.add_argument('--balanceSample', default=True)
     parser.add_argument('--specaug', default=False)  # seems like it's not working with AngleLoss.
     parser.add_argument('--lr', default=1e-3)
     args = parser.parse_args()
 
     seed_everything(42)
 
-    df = pd.read_csv('data/df_mod.csv')[:1000]  # use first 30 lines for debug.
+    df = pd.read_csv('data/df_mod.csv')  # use first 30 lines for debug.
     print('training public kernel baseline.')
     model = get_model(args.arch, classes=args.classes)
     criterion = nn.BCEWithLogitsLoss()
@@ -131,7 +145,8 @@ if __name__ == "__main__":
         benchmark=True,
         # accumulate_grad_batches=1,
         # log_gpu_memory='all',
-        weights_save_path='./weights',
+        weights_save_path=f'./weights/{args.arch}',
         # callbacks=[lr_logger]
     )
+    # trainer = pl.Trainer.from_argparse_args(args)
     trainer.fit(Bird)
