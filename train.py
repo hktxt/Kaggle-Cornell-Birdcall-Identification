@@ -141,12 +141,12 @@ if __name__ == "__main__":
     # parser = pl.Trainer.add_argparse_args(parser)
     parser.add_argument('--fold', default=0, type=int)
     parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--epochs', default=20, type=int)
+    parser.add_argument('--epochs', default=100, type=int)
     parser.add_argument('--arch', default='resnest50', type=str, help="model arch, ['resnet50', 'resnest50', "
                                                                       "'efficientnet-b0~3', 'pyconvhgresnet', "
                                                                       "'resnet_sk2', 'se_resnet50_32x4d']")
     parser.add_argument('--classes', default=264, type=int)
-    parser.add_argument('--batch_size', default=4, type=int)
+    parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--balanceSample', default=True, type=bool)
     parser.add_argument('--use_amp', default=True, type=bool)
     parser.add_argument('--specaug', default=True, type=bool)  # seems like it's not working with AngleLoss.
