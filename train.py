@@ -125,13 +125,13 @@ def train(args):
     Bird = CornellBirdCall(df, model, criterion, metrics=F1(), hparams=args)
     #lr_logger = LearningRateLogger()
     trainer = pl.Trainer(
-        gpus=[0],
+        gpus=-1,
         max_epochs=args.epochs,
         benchmark=True,
         # accumulate_grad_batches=1,
         # log_gpu_memory='all',
         weights_save_path=f'./weights/{args.arch}',
-        amp_level='O2',
+        amp_level='O1',
         use_amp=args.use_amp,
         # callbacks=[lr_logger]
     )
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     parser.add_argument('--fold', default=0, type=int)
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--epochs', default=100, type=int)
-    parser.add_argument('--arch', default='resnest50', type=str, help="model arch, ['resnet50', 'resnest50', "
+    parser.add_argument('--arch', default='resnet50', type=str, help="model arch, ['resnet50', 'resnest50', "
                                                                       "'efficientnet-b0~3', 'pyconvhgresnet', "
                                                                       "'resnet_sk2', 'se_resnet50_32x4d']")
     parser.add_argument('--classes', default=264, type=int)
