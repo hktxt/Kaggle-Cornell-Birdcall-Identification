@@ -11,7 +11,7 @@ from models.resnet import ResNet
 def get_model(model_name, classes=264, pretrained=True):
     print(f'loading {model_name}')
 
-    if model_name == "resnet":
+    if model_name == "resnet50":
         model = ResNet(  # type: ignore
             base_model_name=model_name,
             pretrained=pretrained,

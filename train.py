@@ -41,15 +41,12 @@ class CornellBirdCall(LightningModule):
 
     def training_step(self, batch, batch_idx):
         imgs, labels = batch
-        if self.hparams.specaug and np.random.randint():
-            phase = random.choice([0, 1, 2, 3])
+        if self.hparams.specaug and random.random() > 0.5:
+            phase = random.choice([0, 1, 2])
             if phase == 0:
-                # no aug
-                pass
-            elif phase == 1:
                 # mixup
                 imgs, labels = mixup(imgs, labels)
-            elif phase == 2:
+            elif phase == 1:
                 # spec_aug
                 imgs, labels = spec_augment(imgs, labels)
             else:
@@ -95,10 +92,10 @@ class CornellBirdCall(LightningModule):
         return [optimizer], [scheduler]
 
     def train_dataloader(self):
-        train_set = SpectrogramDataset(df=df[df['fold'] != self.hparams.fold])
+        train_set = SpectrogramDataset(df=self.df[self.df['fold'] != self.hparams.fold])
 
         if self.hparams.balanceSample:
-            print('balance sample, it takes time. take three couples of coffee.')
+            print('balance sample, it will take ~21min for train set.')
             sampler = ImbalancedDatasetSampler(train_set, callback_get_label=callback_get_label1)
             train_loader = torch.utils.data.DataLoader(train_set, sampler=sampler, batch_size=self.hparams.batch_size)
         else:
@@ -108,37 +105,21 @@ class CornellBirdCall(LightningModule):
         return train_loader
 
     def val_dataloader(self):
-        val_set = SpectrogramDataset(df=df[df['fold'] == self.hparams.fold])
+        val_set = SpectrogramDataset(df=self.df[self.df['fold'] == self.hparams.fold])
         val_loader = torch.utils.data.DataLoader(val_set, batch_size=self.hparams.batch_size)
 
         return val_loader
 
 
-if __name__ == "__main__":
-    from argparse import ArgumentParser
-
-    parser = ArgumentParser()
-    parser = pl.Trainer.add_argparse_args(parser)
-    parser.add_argument('--fold', default=0)
-    parser.add_argument('--epochs', default=100)
-    parser.add_argument('--arch', default='resnest50', type=str, help="model arch, ['resnet50', 'resnest50', "
-                                                                      "'efficientnet-b0~3', 'pyconvhgresnet', "
-                                                                      "'resnet_sk2', 'se_resnet50_32x4d']")
-    parser.add_argument('--classes', default=264)
-    parser.add_argument('--batch_size', default=64)
-    parser.add_argument('--balanceSample', default=True)
-    parser.add_argument('--specaug', default=False)  # seems like it's not working with AngleLoss.
-    parser.add_argument('--lr', default=1e-3)
-    args = parser.parse_args()
-
-    seed_everything(42)
+def train(args):
+    seed_everything(args.seed)
 
     df = pd.read_csv('data/df_mod.csv')  # use first 30 lines for debug.
-    print('training public kernel baseline.')
+    print(args)
     model = get_model(args.arch, classes=args.classes)
     criterion = nn.BCEWithLogitsLoss()
     Bird = CornellBirdCall(df, model, criterion, metrics=F1(), hparams=args)
-    lr_logger = LearningRateLogger()
+    #lr_logger = LearningRateLogger()
     trainer = pl.Trainer(
         gpus=[0],
         max_epochs=args.epochs,
@@ -146,7 +127,30 @@ if __name__ == "__main__":
         # accumulate_grad_batches=1,
         # log_gpu_memory='all',
         weights_save_path=f'./weights/{args.arch}',
+        amp_level='O2',
+        use_amp=args.use_amp,
         # callbacks=[lr_logger]
     )
-    # trainer = pl.Trainer.from_argparse_args(args)
     trainer.fit(Bird)
+
+
+if __name__ == "__main__":
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    # parser = pl.Trainer.add_argparse_args(parser)
+    parser.add_argument('--fold', default=0, type=int)
+    parser.add_argument('--seed', default=42, type=int)
+    parser.add_argument('--epochs', default=20, type=int)
+    parser.add_argument('--arch', default='resnest50', type=str, help="model arch, ['resnet50', 'resnest50', "
+                                                                      "'efficientnet-b0~3', 'pyconvhgresnet', "
+                                                                      "'resnet_sk2', 'se_resnet50_32x4d']")
+    parser.add_argument('--classes', default=264, type=int)
+    parser.add_argument('--batch_size', default=4, type=int)
+    parser.add_argument('--balanceSample', default=True, type=bool)
+    parser.add_argument('--use_amp', default=True, type=bool)
+    parser.add_argument('--specaug', default=True, type=bool)  # seems like it's not working with AngleLoss.
+    parser.add_argument('--lr', default=1e-3)
+    args = parser.parse_args()
+
+    train(args)
