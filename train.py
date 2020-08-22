@@ -8,7 +8,7 @@ from models.base import get_model
 from dataset.augment import spec_augment, mixup
 import torch
 import random
-import numpy as np
+from models.loss import TopKLossWithBCE
 import torch.nn as nn
 from prefetch_generator import BackgroundGenerator
 from torchsampler import ImbalancedDatasetSampler
@@ -117,7 +117,11 @@ def train(args):
     df = pd.read_csv('data/df_mod.csv')  # use first 30 lines for debug.
     print(args)
     model = get_model(args.arch, classes=args.classes)
-    criterion = nn.BCEWithLogitsLoss()
+    if args.topK > 0:
+        assert args.topK < 1, 'args.topK Err.'
+        criterion = TopKLossWithBCE(args.topK)
+    else:
+        criterion = nn.BCEWithLogitsLoss()
     Bird = CornellBirdCall(df, model, criterion, metrics=F1(), hparams=args)
     #lr_logger = LearningRateLogger()
     trainer = pl.Trainer(
@@ -147,6 +151,7 @@ if __name__ == "__main__":
                                                                       "'resnet_sk2', 'se_resnet50_32x4d']")
     parser.add_argument('--classes', default=264, type=int)
     parser.add_argument('--batch_size', default=64, type=int)
+    parser.add_argument('--topK', default=0.8, type=float, help='topK loss, range 0~1.')
     parser.add_argument('--balanceSample', default=True, type=bool)
     parser.add_argument('--use_amp', default=True, type=bool)
     parser.add_argument('--specaug', default=True, type=bool)  # seems like it's not working with AngleLoss.

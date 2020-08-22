@@ -55,3 +55,19 @@ class AngleLossWithCE(nn.Module):
         return total_loss
 
 
+# http://papers.nips.cc/paper/6653-learning-with-average-top-k-loss.pdf
+# not sure working or not
+class TopKLossWithBCE(nn.Module):
+    def __init__(self, p=0.7):
+        super().__init__()
+        self.p = p
+        self.bce = nn.BCEWithLogitsLoss(reduction='none')
+
+    def forward(self, pred, gt):
+        k = int(pred.shape[0] * self.p)
+        loss = self.bce(pred, gt)
+        loss = loss.topk(k, dim=0)[0]
+        loss = loss.mean()
+        return loss
+
+
