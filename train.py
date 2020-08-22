@@ -132,7 +132,7 @@ def train(args):
         # log_gpu_memory='all',
         weights_save_path=f'./weights/{args.arch}',
         amp_level='O1',
-        use_amp=args.use_amp,
+        precision=args.precision,
         # callbacks=[lr_logger]
     )
     trainer.fit(Bird)
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--topK', default=0.8, type=float, help='topK loss, range 0~1.')
     parser.add_argument('--balanceSample', default=True, type=bool)
-    parser.add_argument('--use_amp', default=True, type=bool)
+    parser.add_argument('--precision', default=32, type=int)
     parser.add_argument('--specaug', default=True, type=bool)  # seems like it's not working with AngleLoss.
     parser.add_argument('--lr', default=1e-3)
     args = parser.parse_args()
