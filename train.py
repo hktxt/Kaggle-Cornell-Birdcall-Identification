@@ -161,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', default=5, type=int)
     parser.add_argument('--topK', default=-1, type=float, help='topK loss, range 0~1. <0 not use.')
     parser.add_argument('--balanceSample', default=True, type=bool)
-    parser.add_argument('--precision', default=32, type=int)
+    parser.add_argument('--precision', default=16, type=int)
     parser.add_argument('--specaug', default=True, type=bool)  # seems like it's not working with AngleLoss.
     parser.add_argument('--vgg', default=False, type=bool, help='modification based on VoxCelb paper.')
     parser.add_argument('--lr', default=1e-3)
