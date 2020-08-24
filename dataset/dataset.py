@@ -5,6 +5,7 @@ from .utils import load_audio, make_feature
 from config.config import opt
 from .utils import mono_to_color
 import cv2
+import torch
 import random
 import librosa
 import soundfile as sf
@@ -81,16 +82,14 @@ class Birdcall(Dataset):
         return len(self.df)
 
     def __getitem__(self, idx):
-        info = []
         sample = self.df.iloc[idx]
         wav_name = sample["resampled_filename"]
         ebird_code = sample["ebird_code"]
         wav_pth = os.path.join(self.pth, ebird_code, wav_name)
         # y, _ = load_audio(wav_pth)
-        y, _ = librosa.load(wav_pth)
-        label = BIRD_CODE[ebird_code]
+        y, _ = librosa.load(wav_pth, sr=32000)
+        n_samples = len(y)
         if self.train:
-            n_samples = len(y)
             y = [y]
             while n_samples <= opt.N_SAMPLES:
                 sub_df = self.df[self.df['ebird_code'] == ebird_code]
@@ -100,7 +99,7 @@ class Birdcall(Dataset):
                 _ebird_code = _sample["ebird_code"]
                 assert _ebird_code == ebird_code, "Err."
                 _wav_pth = os.path.join(self.pth, _ebird_code, _wav_name)
-                _y, _ = librosa.load(_wav_pth)
+                _y, _ = librosa.load(_wav_pth, sr=32000)
                 y.append(_y)
                 n_samples += len(_y)
 
@@ -108,21 +107,28 @@ class Birdcall(Dataset):
             upper_bound = n_samples - opt.N_SAMPLES
             start = np.random.randint(0, upper_bound)
             end = start + opt.N_SAMPLES
-            spec = np.array([make_feature(np.hstack(y)[start: end], opt.SAMPLE_RATE).transpose()])
+            spec = np.array([make_feature(np.hstack(y)[start: end], opt.SAMPLE_RATE).transpose()]).squeeze(0)
         else:
-            spec = np.array([make_feature(y, opt.SAMPLE_RATE).transpose()])
-        spec = spec.transpose(1, 2, 0)
+            # val phase
+            if n_samples < opt.N_SAMPLES:
+                new_y = np.zeros(opt.N_SAMPLES, dtype=y.dtype)
+                start = np.random.randint(opt.N_SAMPLES - n_samples)
+                new_y[start:start + n_samples] = y
+                y = new_y.astype(np.float32)
+            elif n_samples > opt.N_SAMPLES:
+                start = np.random.randint(n_samples - opt.N_SAMPLES)
+                y = y[start:start + opt.N_SAMPLES].astype(np.float32)
+            else:
+                y = y.astype(np.float32)
+            spec = np.array([make_feature(y, opt.SAMPLE_RATE).transpose()]).squeeze(0)
 
-        sample = {
-            'image': spec,
-            'label': label
-        }
+        spec = spec[None, :, :].repeat(3, axis=0)
+        spec = torch.from_numpy(spec)  # torch.Size([3, 401, 501])
 
-        if self.transform:
-            spec = self.transform(**sample)['image']
-            label = self.transform(**sample)['label']
+        labels = np.zeros(len(BIRD_CODE), dtype="f")
+        labels[BIRD_CODE[ebird_code]] = 1
 
-        return spec, label, info
+        return spec, labels
 
 
 def callback_get_label(dataset, idx):
@@ -137,12 +143,13 @@ def callback_get_label1(dataset, idx):
 class SpectrogramDataset(Dataset):
     def __init__(
         self,
-        df, pth=opt.ROOT_PTH, img_size=224,
+        df, pth=opt.ROOT_PTH, img_size=224, train=True,
         waveform_transforms=None, spectrogram_transforms=None, melspectrogram_parameters={}, PERIOD=5
     ):
         self.df = df
         self.pth = pth
         self.img_size = img_size
+        self.train = train
         self.waveform_transforms = waveform_transforms
         self.spectrogram_transforms = spectrogram_transforms
         self.melspectrogram_parameters = melspectrogram_parameters
@@ -164,29 +171,42 @@ class SpectrogramDataset(Dataset):
         else:
             len_y = len(y)
             effective_length = sr * self.PERIOD
-            # 采样不足时，拼接相同鸟的特征，而不是补0.
-            samples = [y]
-            if len_y < effective_length:
-                while len_y <= effective_length:
-                    sub_df = self.df[self.df['ebird_code'] == ebird_code]
-                    aid = random.randrange(0, len(sub_df))
-                    _sample = sub_df.iloc[aid]
-                    _wav_name = _sample["resampled_filename"]
-                    _ebird_code = _sample["ebird_code"]
-                    assert _ebird_code == ebird_code, "Err."
-                    _wav_pth = os.path.join(self.pth, _ebird_code, _wav_name)
-                    new_y, _ = sf.read(_wav_pth)
-                    samples.append(new_y)
-                    len_y += len(new_y)
-                new_y = np.hstack(samples)
-                start = np.random.randint(len_y - effective_length)
-                y = new_y[start:start + effective_length]
-                y = y.astype(np.float32)
-            elif len_y > effective_length:
-                start = np.random.randint(len_y - effective_length)
-                y = y[start:start + effective_length].astype(np.float32)
+            if self.train:
+                # 采样不足时，拼接相同鸟的特征，而不是补0.
+                samples = [y]
+                if len_y < effective_length:
+                    while len_y <= effective_length:
+                        sub_df = self.df[self.df['ebird_code'] == ebird_code]
+                        aid = random.randrange(0, len(sub_df))
+                        _sample = sub_df.iloc[aid]
+                        _wav_name = _sample["resampled_filename"]
+                        _ebird_code = _sample["ebird_code"]
+                        assert _ebird_code == ebird_code, "Err."
+                        _wav_pth = os.path.join(self.pth, _ebird_code, _wav_name)
+                        new_y, _ = sf.read(_wav_pth)
+                        samples.append(new_y)
+                        len_y += len(new_y)
+                    new_y = np.hstack(samples)
+                    start = np.random.randint(len_y - effective_length)
+                    y = new_y[start:start + effective_length]
+                    y = y.astype(np.float32)
+                elif len_y > effective_length:
+                    start = np.random.randint(len_y - effective_length)
+                    y = y[start:start + effective_length].astype(np.float32)
+                else:
+                    y = y.astype(np.float32)
             else:
-                y = y.astype(np.float32)
+                # val phase
+                if len_y < effective_length:
+                    new_y = np.zeros(effective_length, dtype=y.dtype)
+                    start = np.random.randint(effective_length - len_y)
+                    new_y[start:start + len_y] = y
+                    y = new_y.astype(np.float32)
+                elif len_y > effective_length:
+                    start = np.random.randint(len_y - effective_length)
+                    y = y[start:start + effective_length].astype(np.float32)
+                else:
+                    y = y.astype(np.float32)
 
         melspec = librosa.feature.melspectrogram(y, sr=sr, **self.melspectrogram_parameters)
         melspec = librosa.power_to_db(melspec).astype(np.float32)
@@ -198,7 +218,7 @@ class SpectrogramDataset(Dataset):
         height, width, _ = image.shape
         image = cv2.resize(image, (int(width * self.img_size / height), self.img_size))
         image = np.moveaxis(image, 2, 0)
-        image = (image / 255.0).astype(np.float32)
+        image = (image / 255.0).astype(np.float32)  # (3, 224, 547)
 
 #         labels = np.zeros(len(BIRD_CODE), dtype="i")
         labels = np.zeros(len(BIRD_CODE), dtype="f")

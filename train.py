@@ -93,20 +93,32 @@ class CornellBirdCall(LightningModule):
         return [optimizer], [scheduler]
 
     def train_dataloader(self):
-        train_set = SpectrogramDataset(df=self.df[self.df['fold'] != self.hparams.fold])
+        if self.hparams.feature == 'kaggle':
+            train_set = SpectrogramDataset(df=self.df[self.df['fold'] != self.hparams.fold], train=True)
+        elif self.hparams.feature == 'kesci':
+            train_set = Birdcall(df=self.df[self.df['fold'] != self.hparams.fold], train=True)
+        else:
+            NotImplementedError
 
         if self.hparams.balanceSample:
             print('balance sample, it will take ~21min for train set.')
             sampler = ImbalancedDatasetSampler(train_set, callback_get_label=callback_get_label1)
-            train_loader = torch.utils.data.DataLoader(train_set, sampler=sampler, batch_size=self.hparams.batch_size)
+            train_loader = torch.utils.data.DataLoader(train_set, sampler=sampler, batch_size=self.hparams.batch_size,
+                                                       drop_last=True)
         else:
             print('normal sample.')
-            train_loader = torch.utils.data.DataLoader(train_set, batch_size=self.hparams.batch_size, shuffle=True)
+            train_loader = torch.utils.data.DataLoader(train_set, batch_size=self.hparams.batch_size, shuffle=True,
+                                                       drop_last=True)
 
         return train_loader
 
     def val_dataloader(self):
-        val_set = SpectrogramDataset(df=self.df[self.df['fold'] == self.hparams.fold])
+        if self.hparams.feature == 'kaggle':
+            val_set = SpectrogramDataset(df=self.df[self.df['fold'] == self.hparams.fold], train=False)
+        elif self.hparams.feature == 'kesci':
+            val_set = Birdcall(df=self.df[self.df['fold'] == self.hparams.fold], train=False)
+        else:
+            NotImplementedError
         val_loader = torch.utils.data.DataLoader(val_set, batch_size=self.hparams.batch_size)
 
         return val_loader
@@ -115,15 +127,15 @@ class CornellBirdCall(LightningModule):
 def train(args):
     seed_everything(args.seed)
 
-    df = pd.read_csv('data/df_mod.csv')[:600]  # use first 30 lines for debug.
+    df = pd.read_csv('data/df_mod.csv')  # use first 30 lines for debug.
     print(args)
-    model = get_model(args.arch, classes=args.classes, vgg=args.vgg)
+    model = get_model(args.arch, classes=args.classes, vgg=args.vgg, feature=args.feature)
     if args.topK > 0:
         assert args.topK < 1, 'args.topK Err.'
         criterion = TopKLossWithBCE(args.topK)
     else:
         criterion = nn.BCEWithLogitsLoss()
-    Bird = CornellBirdCall(df, model, criterion, metrics=F1(), hparams=args)
+    Bird = CornellBirdCall(df, model, criterion, metrics=F1(average='micro'), hparams=args)
     #lr_logger = LearningRateLogger()
     checkpoint_callback = ModelCheckpoint(
         save_top_k=1,
@@ -153,17 +165,18 @@ if __name__ == "__main__":
     # parser = pl.Trainer.add_argparse_args(parser)
     parser.add_argument('--fold', default=0, type=int)
     parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--epochs', default=30, type=int)
-    parser.add_argument('--arch', default='efficientnet-b0', type=str, help="model arch, ['resnet50', 'resnest50', "
+    parser.add_argument('--epochs', default=100, type=int)
+    parser.add_argument('--arch', default='resnest50', type=str, help="model arch, ['resnet50', 'resnest50', "
                                                                       "'efficientnet-b0~3', 'pyconvhgresnet', "
                                                                       "'resnet_sk2', 'se_resnet50_32x4d']")
     parser.add_argument('--classes', default=264, type=int)
-    parser.add_argument('--batch_size', default=5, type=int)
+    parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--topK', default=-1, type=float, help='topK loss, range 0~1. <0 not use.')
-    parser.add_argument('--balanceSample', default=True, type=bool)
+    parser.add_argument('--balanceSample', default=False, type=bool)
     parser.add_argument('--precision', default=16, type=int)
     parser.add_argument('--specaug', default=True, type=bool)  # seems like it's not working with AngleLoss.
-    parser.add_argument('--vgg', default=False, type=bool, help='modification based on VoxCelb paper.')
+    parser.add_argument('--feature', default='kaggle', type=str, help='type of feature, option: kaggle, kesci')
+    parser.add_argument('--vgg', default=True, type=bool, help='modification based on VoxCelb paper.')
     parser.add_argument('--lr', default=1e-3)
     args = parser.parse_args()
 

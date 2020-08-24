@@ -12,7 +12,7 @@ class Config:
     HOP_LEN = int(WIN_STEP * SAMPLE_RATE)  # 滑窗滑动距离采样点
 
     N_FRAMES = 500     # 训练帧数
-    DURATION = (N_FRAMES - 1) * WIN_STEP     # 训练单句时长
+    DURATION = N_FRAMES * WIN_STEP     # 训练单句时长
     N_SAMPLES = int(DURATION * SAMPLE_RATE)  # 训练单句采样点
 
     ROOT_PTH = 'D:/project/Cornell-Birdcall-Identification/data/birdsong-recognition/train_audio_resampled/'
