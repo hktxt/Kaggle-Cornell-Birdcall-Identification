@@ -114,9 +114,9 @@ class CornellBirdCall(LightningModule):
 def train(args):
     seed_everything(args.seed)
 
-    df = pd.read_csv('data/df_mod.csv')  # use first 30 lines for debug.
+    df = pd.read_csv('data/df_mod.csv')[:300]  # use first 30 lines for debug.
     print(args)
-    model = get_model(args.arch, classes=args.classes)
+    model = get_model(args.arch, classes=args.classes, vgg=args.vgg)
     if args.topK > 0:
         assert args.topK < 1, 'args.topK Err.'
         criterion = TopKLossWithBCE(args.topK)
@@ -145,16 +145,17 @@ if __name__ == "__main__":
     # parser = pl.Trainer.add_argparse_args(parser)
     parser.add_argument('--fold', default=0, type=int)
     parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--epochs', default=100, type=int)
-    parser.add_argument('--arch', default='resnet50', type=str, help="model arch, ['resnet50', 'resnest50', "
+    parser.add_argument('--epochs', default=5, type=int)
+    parser.add_argument('--arch', default='efficientnet-b0', type=str, help="model arch, ['resnet50', 'resnest50', "
                                                                       "'efficientnet-b0~3', 'pyconvhgresnet', "
                                                                       "'resnet_sk2', 'se_resnet50_32x4d']")
     parser.add_argument('--classes', default=264, type=int)
-    parser.add_argument('--batch_size', default=64, type=int)
-    parser.add_argument('--topK', default=0.8, type=float, help='topK loss, range 0~1.')
+    parser.add_argument('--batch_size', default=5, type=int)
+    parser.add_argument('--topK', default=-1, type=float, help='topK loss, range 0~1. <0 not use.')
     parser.add_argument('--balanceSample', default=True, type=bool)
     parser.add_argument('--precision', default=32, type=int)
     parser.add_argument('--specaug', default=True, type=bool)  # seems like it's not working with AngleLoss.
+    parser.add_argument('--vgg', default=False, type=bool, help='modification based on VoxCelb paper.')
     parser.add_argument('--lr', default=1e-3)
     args = parser.parse_args()
 
