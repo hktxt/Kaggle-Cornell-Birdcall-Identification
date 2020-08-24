@@ -1,7 +1,8 @@
 import torch
 # from models.base import get_resnest
 
-pth = './weights/resnet50/sample-mnist_epoch=02-val_loss=0.009327.ckpt'
+pth = './weights/efficientnet-b0/lightning_logs/version_0/checkpoints/epoch=28.ckpt'
+#pth = './weights/efficientnet-b0test_epoch=28-val_loss=0.002397.ckpt'
 
 state_dict = torch.load(pth)
 # print(state_dict.keys())

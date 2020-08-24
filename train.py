@@ -1,6 +1,7 @@
 from pytorch_lightning.core.lightning import LightningModule
 from pytorch_lightning.metrics.sklearns import F1
 from pytorch_lightning import seed_everything
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateLogger
 from models.loss import AngleLoss, AngleLossWithCE
 import pytorch_lightning as pl
@@ -114,7 +115,7 @@ class CornellBirdCall(LightningModule):
 def train(args):
     seed_everything(args.seed)
 
-    df = pd.read_csv('data/df_mod.csv')[:300]  # use first 30 lines for debug.
+    df = pd.read_csv('data/df_mod.csv')[:600]  # use first 30 lines for debug.
     print(args)
     model = get_model(args.arch, classes=args.classes, vgg=args.vgg)
     if args.topK > 0:
@@ -124,6 +125,12 @@ def train(args):
         criterion = nn.BCEWithLogitsLoss()
     Bird = CornellBirdCall(df, model, criterion, metrics=F1(), hparams=args)
     #lr_logger = LearningRateLogger()
+    checkpoint_callback = ModelCheckpoint(
+        save_top_k=1,
+        verbose=True,
+        monitor='val_loss',
+        mode='min'
+    )
     trainer = pl.Trainer(
         gpus=-1,
         max_epochs=args.epochs,
@@ -134,6 +141,7 @@ def train(args):
         amp_level='O1',
         precision=args.precision,
         # callbacks=[lr_logger]
+        checkpoint_callback=checkpoint_callback
     )
     trainer.fit(Bird)
 
@@ -145,7 +153,7 @@ if __name__ == "__main__":
     # parser = pl.Trainer.add_argparse_args(parser)
     parser.add_argument('--fold', default=0, type=int)
     parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--epochs', default=5, type=int)
+    parser.add_argument('--epochs', default=30, type=int)
     parser.add_argument('--arch', default='efficientnet-b0', type=str, help="model arch, ['resnet50', 'resnest50', "
                                                                       "'efficientnet-b0~3', 'pyconvhgresnet', "
                                                                       "'resnet_sk2', 'se_resnet50_32x4d']")
