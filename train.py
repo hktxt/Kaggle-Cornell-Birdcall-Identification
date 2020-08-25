@@ -36,9 +36,9 @@ class CornellBirdCall(LightningModule):
         output = self.net(x)
         return output
 
-    def get_lr(self):
-        current_lr = self.trainer.optimizers[0].param_groups[0]['lr']
-        return current_lr
+    # def get_lr(self):
+    #     current_lr = self.trainer.optimizers[0].param_groups[0]['lr']
+    #     return current_lr
 
     def training_step(self, batch, batch_idx):
         imgs, labels = batch
@@ -58,8 +58,9 @@ class CornellBirdCall(LightningModule):
         x = self(imgs)
         loss = self.criterion(x, labels)
 
-        lr = self.get_lr()
-        log = {'train_loss': loss, 'lr': lr}
+        # lr = self.get_lr()
+        # log = {'train_loss': loss, 'lr': lr}
+        log = {'train_loss': loss}
 
         return {'loss': loss, 'log': log}
 
@@ -88,7 +89,7 @@ class CornellBirdCall(LightningModule):
         # optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.lr)
         # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
 
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=(self.hparams.lr or self.learning_rate))
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
         return [optimizer], [scheduler]
 
@@ -127,7 +128,7 @@ class CornellBirdCall(LightningModule):
 def train(args):
     seed_everything(args.seed)
 
-    df = pd.read_csv('data/df_mod.csv')  # use first 30 lines for debug.
+    df = pd.read_csv('data/df_mod.csv')[:300]  # use first 30 lines for debug.
     print(args)
     model = get_model(args.arch, classes=args.classes, vgg=args.vgg, feature=args.feature)
     if args.f1loss:
@@ -139,7 +140,7 @@ def train(args):
         else:
             criterion = nn.BCEWithLogitsLoss()
     Bird = CornellBirdCall(df, model, criterion, metrics=F1(average='micro'), hparams=args)
-    #lr_logger = LearningRateLogger()
+    lr_logger = LearningRateLogger()
     checkpoint_callback = ModelCheckpoint(
         save_top_k=1,
         verbose=True,
@@ -155,7 +156,8 @@ def train(args):
         weights_save_path=f'./weights/{args.arch}',
         amp_level='O1',
         precision=args.precision,
-        # callbacks=[lr_logger]
+        # auto_lr_find=True,
+        callbacks=[lr_logger],
         checkpoint_callback=checkpoint_callback
     )
     trainer.fit(Bird)
@@ -168,18 +170,18 @@ if __name__ == "__main__":
     # parser = pl.Trainer.add_argparse_args(parser)
     parser.add_argument('--fold', default=0, type=int)
     parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--epochs', default=100, type=int)
-    parser.add_argument('--arch', default='resnest50', type=str, help="model arch, ['resnet50', 'resnest50', "
+    parser.add_argument('--epochs', default=30, type=int)
+    parser.add_argument('--arch', default='efficientnet-b0', type=str, help="model arch, ['resnet50', 'resnest50', "
                                                                       "'efficientnet-b0~3', 'pyconvhgresnet', "
                                                                       "'resnet_sk2', 'se_resnet50_32x4d']")
     parser.add_argument('--classes', default=264, type=int)
-    parser.add_argument('--batch_size', default=64, type=int)
+    parser.add_argument('--batch_size', default=4, type=int)
     parser.add_argument('--topK', default=-1, type=float, help='topK loss, range 0~1. <0 not use.')
     parser.add_argument('--f1loss', default=False, type=bool, help='F1 loss')
     parser.add_argument('--balanceSample', default=False, type=bool)
     parser.add_argument('--precision', default=16, type=int)
     parser.add_argument('--specaug', default=True, type=bool)  # seems like it's not working with AngleLoss.
-    parser.add_argument('--feature', default='kaggle', type=str, help='type of feature, option: kaggle, kesci')
+    parser.add_argument('--feature', default='kesci', type=str, help='type of feature, option: kaggle, kesci')
     parser.add_argument('--vgg', default=True, type=bool, help='modification based on VoxCelb paper.')
     parser.add_argument('--lr', default=1e-3)
     args = parser.parse_args()
