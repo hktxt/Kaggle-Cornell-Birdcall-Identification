@@ -11,14 +11,11 @@ import torch
 import random
 from models.loss import TopKLossWithBCE, F1LossWithBCE
 import torch.nn as nn
-from prefetch_generator import BackgroundGenerator
 from torchsampler import ImbalancedDatasetSampler
 from dataset.dataset import callback_get_label1
 from dataset.dataset import Birdcall, SpectrogramDataset
 import pandas as pd
 import warnings
-
-
 # warnings.filterwarnings("ignore", category=UserWarning)
 
 
