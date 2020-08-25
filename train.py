@@ -9,7 +9,7 @@ from models.base import get_model
 from dataset.augment import spec_augment, mixup
 import torch
 import random
-from models.loss import TopKLossWithBCE
+from models.loss import TopKLossWithBCE, F1LossWithBCE
 import torch.nn as nn
 from prefetch_generator import BackgroundGenerator
 from torchsampler import ImbalancedDatasetSampler
@@ -130,11 +130,14 @@ def train(args):
     df = pd.read_csv('data/df_mod.csv')  # use first 30 lines for debug.
     print(args)
     model = get_model(args.arch, classes=args.classes, vgg=args.vgg, feature=args.feature)
-    if args.topK > 0:
-        assert args.topK < 1, 'args.topK Err.'
-        criterion = TopKLossWithBCE(args.topK)
+    if args.f1loss:
+        criterion = F1LossWithBCE(classes=args.classes, weights=[1, 1])
     else:
-        criterion = nn.BCEWithLogitsLoss()
+        if args.topK > 0:
+            assert args.topK < 1, 'args.topK Err.'
+            criterion = TopKLossWithBCE(args.topK)
+        else:
+            criterion = nn.BCEWithLogitsLoss()
     Bird = CornellBirdCall(df, model, criterion, metrics=F1(average='micro'), hparams=args)
     #lr_logger = LearningRateLogger()
     checkpoint_callback = ModelCheckpoint(
@@ -172,6 +175,7 @@ if __name__ == "__main__":
     parser.add_argument('--classes', default=264, type=int)
     parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--topK', default=-1, type=float, help='topK loss, range 0~1. <0 not use.')
+    parser.add_argument('--f1loss', default=False, type=bool, help='F1 loss')
     parser.add_argument('--balanceSample', default=False, type=bool)
     parser.add_argument('--precision', default=16, type=int)
     parser.add_argument('--specaug', default=True, type=bool)  # seems like it's not working with AngleLoss.
