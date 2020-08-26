@@ -142,7 +142,8 @@ def train(args):
         save_top_k=1,
         verbose=True,
         monitor='val_loss',
-        mode='min'
+        mode='min',
+        save_weights_only=False
     )
     trainer = pl.Trainer(
         gpus=-1,
@@ -167,7 +168,7 @@ if __name__ == "__main__":
     # parser = pl.Trainer.add_argparse_args(parser)
     parser.add_argument('--fold', default=0, type=int)
     parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--epochs', default=30, type=int)
+    parser.add_argument('--epochs', default=3, type=int)
     parser.add_argument('--arch', default='efficientnet-b0', type=str, help="model arch, ['resnet50', 'resnest50', "
                                                                       "'efficientnet-b0~3', 'pyconvhgresnet', "
                                                                       "'resnet_sk2', 'se_resnet50_32x4d']")
