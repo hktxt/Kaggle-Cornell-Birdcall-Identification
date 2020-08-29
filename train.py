@@ -66,9 +66,20 @@ class CornellBirdCall(LightningModule):
         x = self(imgs)
         val_loss = self.criterion(x, labels)
 
+        # static = {
+        #     'gt': labels.cpu().argmax(dim=1),
+        #     'pred': x.cpu().argmax(dim=1)
+        # }
+
+        x = x.cpu().float()
+        n = x.shape[0]
+        for i in range(n):
+            t = x[i]
+            x[i][t == t.max()] = 1
+            x[i][t != t.max()] = 0
         static = {
-            'gt': labels.cpu().argmax(dim=1),
-            'pred': x.cpu().argmax(dim=1)
+            'gt': labels.cpu(),
+            'pred': x
         }
         log = {'val_loss': val_loss}
         return {'log': log, 'val_loss': val_loss, 'static': static}

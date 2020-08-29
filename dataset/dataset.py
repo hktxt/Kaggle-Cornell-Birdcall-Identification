@@ -145,8 +145,7 @@ class SpectrogramDataset(Dataset):
     def __init__(
         self,
         df, pth=opt.ROOT_PTH, img_size=224, train=True,
-        waveform_transforms=None, spectrogram_transforms=None, melspectrogram_parameters={}, PERIOD=5,
-        transform=get_train_transforms()
+        waveform_transforms=None, spectrogram_transforms=None, melspectrogram_parameters={}, PERIOD=5
     ):
         self.df = df
         self.pth = pth
@@ -155,7 +154,7 @@ class SpectrogramDataset(Dataset):
         self.waveform_transforms = waveform_transforms
         self.spectrogram_transforms = spectrogram_transforms
         self.melspectrogram_parameters = melspectrogram_parameters
-        self.transform = transform
+        # self.transform = transform
         self.PERIOD = PERIOD
         if self.train:
             self.PERIOD = 10
@@ -224,13 +223,13 @@ class SpectrogramDataset(Dataset):
         image = mono_to_color(melspec)
         height, width, _ = image.shape
         image = cv2.resize(image, (int(width * self.img_size / height), self.img_size))
-        #image = np.moveaxis(image, 2, 0)
+        image = np.moveaxis(image, 2, 0)
         image = (image / 255.0).astype(np.float32)  # (3, 224, 547)
 
-        sample = {
-            'image': image
-        }
-        image = self.transform(**sample)['image']
+        # sample = {
+        #     'image': image
+        # }
+        # image = self.transform(**sample)['image']
 
 #         labels = np.zeros(len(BIRD_CODE), dtype="i")
         labels = np.zeros(len(BIRD_CODE), dtype="f")
