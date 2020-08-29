@@ -169,17 +169,17 @@ if __name__ == "__main__":
     parser.add_argument('--fold', default=0, type=int)
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--epochs', default=3, type=int)
-    parser.add_argument('--arch', default='efficientnet-b0', type=str, help="model arch, ['resnet50', 'resnest50', "
+    parser.add_argument('--arch', default='resnet50', type=str, help="model arch, ['resnet50', 'resnest50', "
                                                                       "'efficientnet-b0~3', 'pyconvhgresnet', "
                                                                       "'resnet_sk2', 'se_resnet50_32x4d']")
     parser.add_argument('--classes', default=264, type=int)
-    parser.add_argument('--batch_size', default=4, type=int)
+    parser.add_argument('--batch_size', default=2, type=int)
     parser.add_argument('--topK', default=-1, type=float, help='topK loss, range 0~1. <0 not use.')
     parser.add_argument('--f1loss', default=False, type=bool, help='F1 loss')
     parser.add_argument('--balanceSample', default=False, type=bool)
     parser.add_argument('--precision', default=16, type=int)
     parser.add_argument('--specaug', default=True, type=bool)  # seems like it's not working with AngleLoss.
-    parser.add_argument('--feature', default='kesci', type=str, help='type of feature, option: kaggle, kesci')
+    parser.add_argument('--feature', default='kaggle', type=str, help='type of feature, option: kaggle, kesci')
     parser.add_argument('--vgg', default=True, type=bool, help='modification based on VoxCelb paper.')
     parser.add_argument('--lr', default=1e-3)
     args = parser.parse_args()

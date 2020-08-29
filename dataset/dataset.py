@@ -4,6 +4,7 @@ import os
 from .utils import load_audio, make_feature
 from config.config import opt
 from .utils import mono_to_color
+from dataset.transform import get_train_transforms
 import cv2
 import torch
 import random
@@ -144,7 +145,8 @@ class SpectrogramDataset(Dataset):
     def __init__(
         self,
         df, pth=opt.ROOT_PTH, img_size=224, train=True,
-        waveform_transforms=None, spectrogram_transforms=None, melspectrogram_parameters={}, PERIOD=5
+        waveform_transforms=None, spectrogram_transforms=None, melspectrogram_parameters={}, PERIOD=5,
+        transform=get_train_transforms()
     ):
         self.df = df
         self.pth = pth
@@ -153,7 +155,12 @@ class SpectrogramDataset(Dataset):
         self.waveform_transforms = waveform_transforms
         self.spectrogram_transforms = spectrogram_transforms
         self.melspectrogram_parameters = melspectrogram_parameters
+        self.transform = transform
         self.PERIOD = PERIOD
+        if self.train:
+            self.PERIOD = 10
+        else:
+            self.PERIOD = 5
 
     def __len__(self):
         return len(self.df)
@@ -217,8 +224,13 @@ class SpectrogramDataset(Dataset):
         image = mono_to_color(melspec)
         height, width, _ = image.shape
         image = cv2.resize(image, (int(width * self.img_size / height), self.img_size))
-        image = np.moveaxis(image, 2, 0)
+        #image = np.moveaxis(image, 2, 0)
         image = (image / 255.0).astype(np.float32)  # (3, 224, 547)
+
+        sample = {
+            'image': image
+        }
+        image = self.transform(**sample)['image']
 
 #         labels = np.zeros(len(BIRD_CODE), dtype="i")
         labels = np.zeros(len(BIRD_CODE), dtype="f")
