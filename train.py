@@ -136,7 +136,7 @@ def train(args):
             criterion = TopKLossWithBCE(args.topK)
         else:
             criterion = nn.BCEWithLogitsLoss()
-    Bird = CornellBirdCall(df, model, criterion, metrics=F1(average='micro'), hparams=args)
+    Bird = CornellBirdCall(df, model, criterion, metrics=F1(average='samples'), hparams=args)
     lr_logger = LearningRateLogger()
     checkpoint_callback = ModelCheckpoint(
         save_top_k=1,
