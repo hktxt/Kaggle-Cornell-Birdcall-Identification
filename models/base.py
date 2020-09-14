@@ -78,6 +78,8 @@ def get_effdet(modelName, classes, vgg=False, feature='kaggle', pretrained=True)
         in_channels = 1408
     elif modelName == "efficientnet-b3":
         in_channels = 1536
+    elif modelName == "efficientnet-b5":
+        in_channels = 2048
     else:
         raise ValueError
 
